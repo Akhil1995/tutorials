@@ -114,7 +114,6 @@ an `if/else` statement will be generated.
    test("shonan-hmm1b_dyn") {
     val snippet = new DslDriver[Array[Int],Array[Int]] {
       def snippet(v: Rep[Array[Int]]) = {
-
         val x = 100 - v.length
 
         if (x > 10) {

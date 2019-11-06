@@ -12,7 +12,7 @@ import scala.lms.common._
 
 object query_staged0 {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
-with ScannerBase {
+with ScannerBase with TimerBase {
   override def version = "query_staged0"
 
 /**
@@ -36,8 +36,8 @@ Low-Level Processing Logic
       // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
       nextRecord // ignore csv header
     }
-    while (s.hasNext) yld(nextRecord)
-    s.close
+    while (true) yld(nextRecord)
+      s.close
   }
 
   def printSchema(schema: Schema) = println(schema.mkString(defaultFieldDelimiter.toString))
@@ -89,7 +89,10 @@ Query Interpretation = Compilation
     case PrintCSV(parent) =>
       val schema = resultSchema(parent)
       printSchema(schema)
-      execOp(parent) { rec => printFields(rec.fields) }
+      execOp(parent) { rec =>
+
+        printFields(rec.fields)
+      }
   }
   def execQuery(q: Operator): Unit = execOp(q) { _ => }
 }}

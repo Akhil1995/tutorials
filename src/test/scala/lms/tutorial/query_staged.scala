@@ -8,11 +8,13 @@ Outline:
 */
 package scala.lms.tutorial
 
+import scala.concurrent.Future
 import scala.lms.common._
+import scala.lms.core.stub._
 
 object query_staged {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
-with ScannerBase {
+with ScannerBase with TimerBase{
   override def version = "query_staged"
 
 /**
@@ -36,7 +38,7 @@ Low-Level Processing Logic
       // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
       nextRecord // ignore csv header
     }
-    while (s.hasNext) yld(nextRecord)
+    while (true) yld(nextRecord)
     s.close
   }
 
@@ -88,12 +90,25 @@ Query Interpretation = Compilation
       }
     case Group(keys, agg, parent) =>
       val hm = new HashMapAgg(keys, agg)
+      val t = newTimer()
+      var cnt = 0
+      var time = t.currentTime()
+      val tm = new HashMapAgg(keys,agg)
       execOp(parent) { rec =>
         hm(rec(keys)) += rec(agg)
+        cnt += 1
+        var currentTime = t.currentTime()
+        if (currentTime-time > 5000) {
+          hm foreach { (k, a) =>
+            var rec1 = new Record(k ++ a, keys ++ agg)
+            printFields(rec1.fields)
+            yld(rec1)
+          }
+          cnt = 0
+          hm.clear
+        }
       }
-      hm foreach { (k,a) =>
-        yld(Record(k ++ a, keys ++ agg))
-      }
+        //Thread.sleep(5000)
     case HashJoin(left, right) =>
       val keys = resultSchema(left) intersect resultSchema(right)
       val hm = new HashMapBuffer(keys, resultSchema(left))
@@ -135,8 +150,14 @@ Data Structure Implementations
     val keyCount = var_new(0)
 
     val hashMask = hashSize - 1
-    val htable = NewArray[Int](hashSize)
+    val htable = NewArray[Int](hashSize) // new Array : Rep[Array]
     for (i <- 0 until hashSize) { htable(i) = -1 }
+
+    def clear = {
+      keyCount = 0
+      for (i <- 0 until hashSize) { htable(i) = -1 }
+    }
+
 
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))

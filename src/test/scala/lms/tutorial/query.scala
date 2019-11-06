@@ -293,9 +293,9 @@ object Run {
       override def eval = run
     }
   def scala_engine =
-    new DslDriver[String,Unit] with ScannerExp
+    new DslDriver[String,Unit] with ScannerExp with TimerExp
     with StagedEngine with MainEngine with query_staged.QueryCompiler { q =>
-      override val codegen = new DslGen with ScalaGenScanner {
+      override val codegen = new DslGen with ScalaGenScanner with ScalaGenTimer{
         val IR: q.type = q
       }
       override def snippet(fn: Table): Rep[Unit] = run
@@ -336,6 +336,7 @@ object Run {
 
     try {
       engine.prepare
+      System.out.println(engine.code)
       utils.time(engine.eval)
     } catch {
       case ex: Exception =>

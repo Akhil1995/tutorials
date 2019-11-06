@@ -22,10 +22,13 @@ Input File Tokenizer
   class Scanner(name: Rep[String]) {
     val fd = open(name)
     val fl = filelen(fd)
-    val data = mmap[Char](fd,fl)
+    var data = mmap[Char](fd,fl)
     var pos = 0
 
     def next(d: Rep[Char]) = {
+      if(pos>=fl){
+        data = mmap[Char](fd,fl)
+      }
       val start = pos: Rep[Int] // force read
       while (data(pos) != d) pos += 1
       val len = pos - start
@@ -98,7 +101,7 @@ Low-Level Processing Logic
       // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
       nextRecord // ignore csv header
     }
-    while (s.hasNext) yld(nextRecord)
+    while (true) yld(nextRecord)
     s.done
   }
 

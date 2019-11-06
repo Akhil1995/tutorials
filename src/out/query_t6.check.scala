@@ -19,8 +19,7 @@ class Snippet extends ((java.lang.String)=>(Unit)) {
     val x14 = x13.next(',')
     val x15 = x13.next(',')
     val x16 = x13.next('\n')
-    val x59 = while ({val x17 = x13.hasNext
-      x17}) {
+    val x59 = while (true) {
       val x19 = x13.next(',')
       val x20 = x13.next(',')
       val x21 = x13.next('\n')
