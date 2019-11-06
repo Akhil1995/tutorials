@@ -1,8 +1,12 @@
 package scala.lms.tutorial
 
-import scala.lms.common._
+import lms.core.stub._
+import lms.core.utils
 
+import lms.macros.SourceContext
+import lms.core.virtualize
 
+@virtualize
 class QueryLiveStepsTest extends TutorialFunSuite {
   val under = "query_live_"
 
@@ -125,7 +129,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
       def run = {
         val ops = parseSql("select * from src/data/talks.csv")
-        
+
         println(ops)
         println("---")
         execOp(PrintCSV(ops)) { _ => }
@@ -167,7 +171,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
       def run = {
         val ops = parseSql("select time,room,title from src/data/talks.csv")
-        
+
         println(ops)
         println("---")
         execOp(PrintCSV(ops)) { _ => }
@@ -221,7 +225,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
       def run = {
         val ops = parseSql("select time,room,title from src/data/talks.csv where time = '09:00 AM'")
-        
+
         println(ops)
         println("---")
         execOp(PrintCSV(ops)) { _ => }
@@ -275,7 +279,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
       def run = {
         val ops = parseSql("select time,room,title from src/data/talks.csv where time = '09:00 AM'")
-        
+
         println(ops)
         println("---")
         execOp(PrintCSV(ops)) { _ => }
@@ -346,7 +350,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
 /*
         val ops = parseSql("select time,room,title from src/data/talks.csv where time = '09:00 AM'")
-        
+
         println(ops)
         println("---")
         execOp(PrintCSV(ops)) { _ => }
@@ -408,7 +412,7 @@ class QueryLiveStepsTest extends TutorialFunSuite {
         println(snippet.code)
         println("--- now running: ---")
         snippet.precompile
-        utils.time {
+        utils.time("eval") {
           snippet.eval(4)
         }
 
@@ -421,13 +425,12 @@ class QueryLiveStepsTest extends TutorialFunSuite {
 
 
   trait SimpleQueryProcessor extends PlainQueryProcessor with SQLParser {
-    def dynamicFilePath(table: String): Table = table
     def execQuery(q: Operator): Unit = ???
     def version: String = "simple"
   }
 
 
-  abstract class LMS_Driver[A:Manifest,B:Manifest] extends DslDriver[A,B] with ScannerExp { q =>
+  abstract class LMS_Driver[A:Manifest, B:Manifest] extends DslDriver[A,B] with ScannerExp { q =>
     override val codegen = new DslGen with ScalaGenScanner {
       val IR: q.type = q
     }

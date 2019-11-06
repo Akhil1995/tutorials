@@ -1,2 +1,12 @@
 target/
 /bin/
+=======
+# Any path containing "target"
+target
+
+# IntelliJ project files
+.idea/
+
+# Test output
+src/out/*.actual.scala
+src/out/*.actual.csv

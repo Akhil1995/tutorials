@@ -1,31 +1,22 @@
 /*****************************************
 Emitting Generated Code
 *******************************************/
-class Snippet extends ((java.lang.String)=>(Unit)) {
-  def apply(x0:java.lang.String): Unit = {
-    val x1 = println("Word,Value,Phrase,Year,MatchCount,VolumeCount")
-    val x2 = new scala.lms.tutorial.Scanner("src/data/words.csv")
-    val x3 = x2.next(',')
-    val x4 = x2.next('\n')
-    val x21 = while ({val x5 = x2.hasNext
-      x5}) {
-      val x7 = x2.next(',')
-      val x8 = x2.next('\n')
-      val x9 = new scala.lms.tutorial.Scanner(x0)
-      val x18 = while ({val x10 = x9.hasNext
-        x10}) {
-        val x12 = x9.next('\t')
-        val x13 = x9.next('\t')
-        val x14 = x9.next('\t')
-        val x15 = x9.next('\n')
-        val x16 = printf("%s,%s,%s,%s,%s,%s\n",x7,x8,x12,x13,x14,x15)
-        x16
+class Snippet() extends (java.lang.String => Unit) {
+  def apply(x0: java.lang.String): Unit = {
+    println("Word,Value,Phrase,Year,MatchCount,VolumeCount")
+    val x1 = new scala.lms.tutorial.Scanner("src/data/words.csv")
+    x1.next(',')
+    x1.next('\n')
+    while (x1.hasNext) {
+      val x2 = x1.next(',')
+      val x3 = x1.next('\n')
+      val x4 = new scala.lms.tutorial.Scanner("src/data/t1gram.csv")
+      while (x4.hasNext) {
+        printf("%s,%s,%s,%s,%s,%s\n", x2, x3, x4.next('\t'), x4.next('\t'), x4.next('\t'), x4.next('\n'))
       }
-      val x19 = x9.close
-      x19
+      x4.close
     }
-    val x22 = x2.close
-    ()
+    x1.close
   }
 }
 /*****************************************

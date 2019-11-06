@@ -1,7 +1,8 @@
 package scala.lms.tutorial
 
-import scala.lms.common.Compile
-import scala.reflect.SourceContext
+import lms.core.stub._
+import lms.macros.SourceContext
+import lms.core.virtualize
 
 trait TrackConditionals extends Dsl {
   var cs1: Set[Rep[Boolean]] = Set.empty
@@ -29,6 +30,7 @@ trait TrackConditionals extends Dsl {
   }
 }
 
+@virtualize
 trait DynVarWarmup extends Dsl {
   def snippet(n: Rep[Int]): Rep[Int] = {
     if (n==0) {

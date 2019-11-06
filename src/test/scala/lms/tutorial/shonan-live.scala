@@ -1,10 +1,11 @@
 package scala.lms.tutorial
 
-import scala.lms.common._
-import scala.reflect.SourceContext
+import lms.core.stub._
+import lms.macros.SourceContext
+import lms.core.virtualize
 
 // sbt ~test-only *ShonanLive*
-
+@virtualize
 class ShonanLiveTest extends TutorialFunSuite {
   val under = "0-live-"
 
@@ -35,7 +36,7 @@ class ShonanLiveTest extends TutorialFunSuite {
     // let's run it on some static input:
     val v = A(1,1,1,1,1)
     val v1 = matrix_vector_prod(a, v)
-    
+
     val result = v1.mkString(",")
     check("shonan-hmm-live", result)
   }
@@ -61,18 +62,18 @@ class ShonanLiveTest extends TutorialFunSuite {
   2) add conditional
   3) stage mv prod
       - staticData(a)
-      - NewArray[Int](n)     
+      - NewArray[Int](n)
   4) Range vs Rep[Range]
   5) unrollIf
 */
 
-abstract class LMS_Driver[A:Manifest,B:Manifest] extends DslDriver[A,B]
+abstract class LMS_Driver[A:Manifest, B:Manifest] extends DslDriver[A,B]
 
 
 }
 
 
-/*    
+/*
     val snippet = new LMS_Driver[Array[Int],Array[Int]] {
       def unrollIf(c: Boolean)(r: Range) = new {
         def foreach(f: Rep[Int] => Rep[Unit]): Rep[Unit] = {

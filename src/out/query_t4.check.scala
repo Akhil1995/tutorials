@@ -1,35 +1,30 @@
 /*****************************************
 Emitting Generated Code
 *******************************************/
-class Snippet extends ((java.lang.String)=>(Unit)) {
-  def apply(x0:java.lang.String): Unit = {
-    val x1 = println("Name,Value,Flag,Name1")
-    val x2 = new scala.lms.tutorial.Scanner("src/data/t.csv")
-    val x3 = x2.next(',')
-    val x4 = x2.next(',')
-    val x5 = x2.next('\n')
-    val x25 = while ({val x6 = x2.hasNext
-      x6}) {
-      val x8 = x2.next(',')
-      val x9 = x2.next(',')
-      val x10 = x2.next('\n')
-      val x11 = new scala.lms.tutorial.Scanner("src/data/t.csv")
-      val x12 = x11.next(',')
-      val x13 = x11.next(',')
-      val x14 = x11.next('\n')
-      val x22 = while ({val x15 = x11.hasNext
-        x15}) {
-        val x17 = x11.next(',')
-        val x18 = x11.next(',')
-        val x19 = x11.next('\n')
-        val x20 = printf("%s,%s,%s,%s\n",x8,x9,x10,x17)
-        x20
+class Snippet() extends (java.lang.String => Unit) {
+  def apply(x0: java.lang.String): Unit = {
+    println("Name,Value,Flag,Name1")
+    val x1 = new scala.lms.tutorial.Scanner("src/data/t.csv")
+    x1.next(',')
+    x1.next(',')
+    x1.next('\n')
+    while (x1.hasNext) {
+      val x2 = x1.next(',')
+      val x3 = x1.next(',')
+      val x4 = x1.next('\n')
+      val x5 = new scala.lms.tutorial.Scanner("src/data/t.csv")
+      x5.next(',')
+      x5.next(',')
+      x5.next('\n')
+      while (x5.hasNext) {
+        val x6 = x5.next(',')
+        x5.next(',')
+        x5.next('\n')
+        printf("%s,%s,%s,%s\n", x2, x3, x4, x6)
       }
-      val x23 = x11.close
-      x23
+      x5.close
     }
-    val x26 = x2.close
-    ()
+    x1.close
   }
 }
 /*****************************************

@@ -1,45 +1,25 @@
 /*****************************************
 Emitting Generated Code
 *******************************************/
-class Snippet extends ((Int)=>(Int)) {
-  def apply(x0:Int): Int = {
-    var x5 = null.asInstanceOf[scala.Function1[Int, Int]]
-    var x1 = null.asInstanceOf[scala.Function1[Int, Int]]
-    val x9 = {x10: (Int) =>
+class Snippet() extends (Int => Int) {
+  def apply(x0: Int): Int = {
+    var x1: scala.Function1[Int, Int] = null.asInstanceOf[scala.Function1[Int, Int]]
+    var x2: scala.Function1[Int, Int] = null.asInstanceOf[scala.Function1[Int, Int]]
+    x1 = x3
+    x2 = x4
+    def x6(x5:Int): Int = {
       // ack_0
-      val x12 = x10 + 1
-      x12: Int
+      x5 + 1
     }
-    x5 = {x6: (Int) =>
+    def x4(x7:Int): Int = {
       // ack_1
-      val x8 = x6 == 0
-      val x20 = if (x8) {
-        val x14 = x9(1)
-        x14
-      } else {
-        val x16 = x6 - 1
-        val x17 = x5(x16)
-        val x18 = x9(x17)
-        x18
-      }
-      x20: Int
+      if (x7 == 0) x6(1) else x6(x2(x7 - 1))
     }
-    x1 = {x2: (Int) =>
+    def x3(x8:Int): Int = {
       // ack_2
-      val x4 = x2 == 0
-      val x28 = if (x4) {
-        val x22 = x5(1)
-        x22
-      } else {
-        val x24 = x2 - 1
-        val x25 = x1(x24)
-        val x26 = x5(x25)
-        x26
-      }
-      x28: Int
+      if (x8 == 0) x4(1) else x4(x1(x8 - 1))
     }
-    val x30 = x1(x0)
-    x30
+    x3(x0)
   }
 }
 /*****************************************

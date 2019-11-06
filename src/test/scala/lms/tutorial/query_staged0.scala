@@ -8,8 +8,11 @@ Outline:
 */
 package scala.lms.tutorial
 
-import scala.lms.common._
+import lms.core.stub._
+import lms.macros.SourceContext
+import lms.core.virtualize
 
+@virtualize
 object query_staged0 {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
 with ScannerBase with TimerBase {

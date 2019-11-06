@@ -12,17 +12,25 @@ Outline:
 
 package scala.lms.tutorial
 
-import scala.lms.common.ForwardTransformer
-import scala.reflect.SourceContext
+import scala.virtualization.lms.stub.common.ForwardTransformer
+import lms.macros.SourceContext
+import lms.core.virtualize
 
 // Shonan Challenge 3.3 Stencil
 // https://groups.google.com/d/msg/stagedhpc/r5L4xGJETwE/1kOdwJo0kgAJ
 
+@virtualize
 trait Sliding extends Dsl {
+  implicit class WrapIntSliding(n: Rep[Int]) {
+    def sliding[T:Typ](f: Rep[Int] => Rep[T]): Rep[Array[T]] = infix_sliding(n, f)
+  }
   def infix_sliding[T:Typ](n: Rep[Int], f: Rep[Int] => Rep[T]): Rep[Array[T]] = {
     val a = NewArray[T](n)
     sliding(0,n)(i => a(i) = f(i))
     a
+  }
+  implicit class WrapRangeSliding(r: Rep[Range]) {
+    def sliding = infix_sliding(r)
   }
   def infix_sliding(r: Rep[Range]) = new {
     def foreach(f: Rep[Int] => Rep[Unit]): Rep[Unit] =
@@ -31,6 +39,7 @@ trait Sliding extends Dsl {
   def sliding(start: Rep[Int], end: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit]
 }
 
+@virtualize
 trait NoSlidingExp extends DslExp with Sliding {
   // not actually sliding -- just to have a baseline reference
   def sliding(start: Rep[Int], end: Rep[Int])(f: Rep[Int] => Rep[Unit]): Rep[Unit] = {
@@ -38,6 +47,7 @@ trait NoSlidingExp extends DslExp with Sliding {
   }
 }
 
+@virtualize
 trait SlidingExp extends DslExp with Sliding {
   object trans extends ForwardTransformer {
     val IR: SlidingExp.this.type = SlidingExp.this
@@ -123,12 +133,15 @@ trait SlidingExp extends DslExp with Sliding {
   }
 }
 
+@virtualize
 trait SlidingWarmup extends Sliding {
   def snippet(n: Rep[Int]): Rep[Array[Int]] = {
     def compute(i: Rep[Int]) = 2*i+3
     n sliding { i => compute(i) + compute(i+1) }
   }
 }
+
+@virtualize
 abstract class SlidingWarmupDriver extends DslDriver[Int,Array[Int]] with SlidingWarmup
 class SlidingWarmupTest extends TutorialFunSuite {
   val under = "sliding"
@@ -144,6 +157,7 @@ class SlidingWarmupTest extends TutorialFunSuite {
   }
 }
 
+@virtualize
 trait Stencil extends Sliding {
   def snippet(v: Rep[Array[Double]]): Rep[Array[Double]] = {
     val n = v.length
@@ -160,7 +174,11 @@ trait Stencil extends Sliding {
     output
   }
 }
+
+@virtualize
 abstract class StencilDriver extends DslDriver[Array[Double],Array[Double]] with Stencil
+
+@virtualize
 class StencilTest extends TutorialFunSuite {
   val under = "stencil"
 

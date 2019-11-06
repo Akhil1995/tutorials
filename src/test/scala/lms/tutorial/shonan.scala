@@ -22,9 +22,12 @@ Outline:
 
 package scala.lms.tutorial
 
-import scala.lms.common._
-import scala.reflect.SourceContext
+import lms.core.stub._
 
+import lms.macros.SourceContext
+import lms.core.virtualize
+
+@virtualize
 class ShonanTest extends TutorialFunSuite {
   val under = ""
   val A = scala.Array
@@ -98,6 +101,7 @@ LMS works, play with static vs dynamic expressions.
       }
     }
     check("shonan-hmm1b", snippet.code)
+    assert { val a = Array(1,2,3); snippet.eval(a) == a }
   }
 
 /**
@@ -124,6 +128,7 @@ an `if/else` statement will be generated.
       }
     }
     check("shonan-hmm1b_dyn", snippet.code)
+    assert { val a = Array(1,2,3); snippet.eval(a) == a }
   }
 
 /**
@@ -200,6 +205,7 @@ to either a `Range` or a `Rep[Range]` loop.
       }
     }
     check("shonan-hmm1c", snippet.code)
+    assert(snippet.eval(Array(1,2,3,4,5)).toList == List(15,0,3,0,8))
   }
 
 /**
@@ -252,6 +258,7 @@ The generated code is identical: _"abstraction without regret"_ FTW!
       }
     }
     check("shonan-hmm1d", snippet.code)
+    assert(snippet.eval(Array(1,2,3,4,5)).toList == List(15,0,3,0,8))
   }
 }
 

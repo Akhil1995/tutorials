@@ -8,13 +8,26 @@ Outline:
 */
 package scala.lms.tutorial
 
+<<<<<<< HEAD
 import scala.concurrent.Future
 import scala.lms.common._
 import scala.lms.core.stub._
+=======
+import lms.core.stub._
+import lms.core.virtualize
+import lms.macros.SourceContext
+>>>>>>> f752d9c368e68b7e2c944487d5b437356c817048
 
+@virtualize
 object query_staged {
+<<<<<<< HEAD
 trait QueryCompiler extends Dsl with StagedQueryProcessor
 with ScannerBase with TimerBase{
+=======
+
+trait QueryCompiler extends Dsl with StagedQueryProcessor with ScannerBase {
+
+>>>>>>> f752d9c368e68b7e2c944487d5b437356c817048
   override def version = "query_staged"
 
 /**
@@ -40,6 +53,33 @@ Low-Level Processing Logic
     }
     while (true) yld(nextRecord)
     s.close
+  }
+
+  implicit class stringScannerOps(x: Rep[StringScanner]) {
+    def escape(d: Char) = d match {
+      case '\t' => "'\\t'"
+      case '\n' => "'\\n'"
+      case _ => s"'$d'"
+    }
+    def next(d: Char) = unchecked[String](x,raw".next(${escape(d)})")
+  }
+
+  class EventHandler {
+    val srcs = new scala.collection.mutable.ListBuffer[((String, Int), Rep[StringScanner] => Rep[Unit])]()
+
+    def isEmpty = srcs.length == 0
+
+    def registerSrc(addr: String, port: Int)(yld: Rep[StringScanner] => Rep[Unit]): Unit = {
+      srcs += (((addr, port), yld))
+    }
+  }
+
+  lazy val eventHandler = new EventHandler
+  def registerStreamCSV(addr: String, port: Int, schema: Schema, fieldDelimiter: Char)(yld: Record => Rep[Unit]): Rep[Unit] = {
+    val last = schema.last
+    eventHandler.registerSrc(addr, port) { (s: Rep[StringScanner]) =>
+      yld(Record(schema.map{x => s.next(if (x==last) '\n' else fieldDelimiter)}, schema))
+    }
   }
 
   def printSchema(schema: Schema) = println(schema.mkString(defaultFieldDelimiter.toString))
@@ -75,7 +115,9 @@ Query Interpretation = Compilation
 
   def execOp(o: Operator)(yld: Record => Rep[Unit]): Rep[Unit] = o match {
     case Scan(filename, schema, fieldDelimiter, externalSchema) =>
-      processCSV(filename, schema, fieldDelimiter, externalSchema)(yld)
+      // assuming filename: addr_port
+      val Array(addr, port) = filename.split("_")
+      registerStreamCSV(addr, port.toInt, schema, fieldDelimiter)(yld)
     case Filter(pred, parent) =>
       execOp(parent) { rec => if (evalPred(pred)(rec)) yld(rec) }
     case Project(newSchema, parentSchema, parent) =>
@@ -125,7 +167,28 @@ Query Interpretation = Compilation
       printSchema(schema)
       execOp(parent) { rec => printFields(rec.fields) }
   }
-  def execQuery(q: Operator): Unit = execOp(q) { _ => }
+
+
+  abstract class Handler
+  implicit class handlerOps(x: Rep[Handler]) {
+    def run(f: (Rep[Int], Rep[StringScanner]) => Rep[Unit]): Unit = {
+      val block = Adapter.g.reify(2, xn => Unwrap(f(Wrap[Int](xn(0)), Wrap[StringScanner](xn(1)))))
+      Adapter.g.reflect("Handler.run", Unwrap(x), block)
+    }
+  }
+
+  def execQuery(q: Operator): Unit = {
+    execOp(q) { _ => }
+
+    val srcsAddress = eventHandler.srcs.map { case ((addr, port), _) => s"""("$addr", $port)""" }.mkString(",")
+    val handler = unchecked[Handler]("new scala.lms.tutorial.EventHandler(", srcsAddress, ")")
+
+    handler.run { (streamId: Rep[Int], content: Rep[StringScanner]) =>
+      switch(streamId) (
+        eventHandler.srcs.toSeq.zipWithIndex.map { case ((_, f), idx) => (Seq(idx), { (streamId: Rep[Int]) => f(content); () }) } : _*
+      )
+    }
+  }
 
 /**
 Data Structure Implementations
@@ -145,14 +208,13 @@ Data Structure Implementations
 
   class HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
-    
+
     val keys = new ArrayBuffer[String](keysSize, keySchema)
     val keyCount = var_new(0)
 
     val hashMask = hashSize - 1
-    val htable = NewArray[Int](hashSize) // new Array : Rep[Array]
-    for (i <- 0 until hashSize) { htable(i) = -1 }
-
+    val htable = NewArray[Int](hashSize)
+    for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
     def clear = {
       keyCount = 0
       for (i <- 0 until hashSize) { htable(i) = -1 }
@@ -161,7 +223,7 @@ Data Structure Implementations
 
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))
-    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] = 
+    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] =
     comment[Int]("hash_lookup") {
       val h = fieldsHash(k).toInt
       var pos = h & hashMask
@@ -186,7 +248,6 @@ Data Structure Implementations
   }
 
   // hash table for groupBy, storing sums
-
   class HashMapAgg(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
 
@@ -194,7 +255,7 @@ Data Structure Implementations
 
     def apply(k: Fields) = new {
       def +=(v: Fields) = {
-        val keyPos = lookupOrUpdate(k) { keyPos => 
+        val keyPos = lookupOrUpdate(k) { keyPos =>
           values(keyPos) = schema.map(_ => 0:Rep[Int])
         }
         values(keyPos) = (values(keyPos), v.map(_.toInt)).zipped map (_ + _)
@@ -210,7 +271,6 @@ Data Structure Implementations
   }
 
   // hash table for joins, storing lists of records
-
   class HashMapBuffer(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
 
