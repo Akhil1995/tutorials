@@ -49,12 +49,13 @@ class Scanner(filename: String) {
   def close = br.close
 }
 
-class EventHandler(srcs: (String, Int)*) {
+class EventHandler(intervals: Seq[Int], srcs: (String, Int)*) {
 
   val debug = false
   def run(f: (Int, StringScanner) => Unit) = {
 
     val selector = Selector.open()
+    assert(intervals.length == 1)
 
     val socks = for ((addr, port) <- srcs) yield {
       val socketChannel = SocketChannel.open()
@@ -64,13 +65,28 @@ class EventHandler(srcs: (String, Int)*) {
       socketChannel
     }
 
+    // Needs to do something more clever if more than one interval
     try {
+      var time = System.nanoTime + intervals.head * 1000000L
       while (true) {
-        selector.select();
+        var delta = time - System.nanoTime
+        if (intervals.head > 0L && delta <= 0L) { // timeout already occurs!!!
+          time = System.nanoTime + intervals.head * 1000000L
+          f(socks.length, null)
+          delta = (time - System.nanoTime) / 1000000L
+          assert(delta > 0l, "timeout too short!")
+        } else {
+          delta /= 1000000L
+        }
+        val nchannels = selector.select(if (intervals.head == 0) 0L else delta);
+        if (intervals.head > 0L && time - System.nanoTime <= 0L) { // timeout!!!
+          time = System.nanoTime + intervals.head * 1000000L
+          f(socks.length, null)
+        }
         for (key <- selector.selectedKeys.asScala) {
           if (key.isReadable) {
             val buffer = ByteBuffer.allocate(256);
-            val client = key.channel.asInstanceOf[SocketChannel];
+            val client = key.channel.asInstanceOf[ReadableByteChannel]
             client.read(buffer)
             val str = new String(buffer.array).trim
             if (debug) println(s"""Accept "${str.map(_.toInt.toHexString).mkString}"""")

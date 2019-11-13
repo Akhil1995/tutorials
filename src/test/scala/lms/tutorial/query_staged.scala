@@ -54,11 +54,17 @@ Low-Level Processing Logic
 
   class EventHandler {
     val srcs = new scala.collection.mutable.ListBuffer[((String, Int), Rep[StringScanner] => Rep[Unit])]()
+    val intervals = new scala.collection.mutable.ListBuffer[(Int, () => Unit)]()
 
     def isEmpty = srcs.length == 0
 
     def registerSrc(addr: String, port: Int)(yld: Rep[StringScanner] => Rep[Unit]): Unit = {
       srcs += (((addr, port), yld))
+    }
+
+    def registerInterval(i: Int)(yld: => Unit): Unit = {
+      assert(intervals.length == 0)
+      intervals += ((i, () => yld))
     }
   }
 
@@ -125,17 +131,13 @@ Query Interpretation = Compilation
       val tm = new HashMapAgg(keys,agg)
       execOp(parent) { rec =>
         hm(rec(keys)) += rec(agg)
-        cnt += 1
-        val currentTime = timestamp
-        if (currentTime - time > 5000000L) {
-          hm foreach { (k, a) =>
-            val rec1 = new Record(k ++ a, keys ++ agg)
-            // printFields(rec1.fields)
-            yld(rec1)
-          }
-          cnt = 0
-          hm.clear
+      }
+      eventHandler.registerInterval(5000L) {
+        hm foreach { (k, a) =>
+          val rec1 = new Record(k ++ a, keys ++ agg)
+          yld(rec1)
         }
+        hm.clear
       }
         //Thread.sleep(5000)
     case HashJoin(left, right) =>
@@ -168,10 +170,12 @@ Query Interpretation = Compilation
     execOp(q) { _ => }
 
     val srcsAddress = eventHandler.srcs.map { case ((addr, port), _) => s"""("$addr", $port)""" }.mkString(",")
-    val handler = unchecked[Handler]("new scala.lms.tutorial.EventHandler(", srcsAddress, ")")
+    val intervals = eventHandler.intervals.headOption.map { case (i, _) => s"Seq($i)"} getOrElse("Seq(0)")
+    val default = eventHandler.intervals.headOption.map(_._2)
+    val handler = unchecked[Handler](s"new scala.lms.tutorial.EventHandler($intervals, $srcsAddress)")
 
     handler.run { (streamId: Rep[Int], content: Rep[StringScanner]) =>
-      switch(streamId) (
+      switch(streamId, default) (
         eventHandler.srcs.toSeq.zipWithIndex.map { case ((_, f), idx) => (Seq(idx), { (streamId: Rep[Int]) => f(content); () }) } : _*
       )
     }
