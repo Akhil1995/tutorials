@@ -8,26 +8,17 @@ Outline:
 */
 package scala.lms.tutorial
 
-<<<<<<< HEAD
 import scala.concurrent.Future
 import scala.lms.common._
 import scala.lms.core.stub._
-=======
+
 import lms.core.stub._
 import lms.core.virtualize
 import lms.macros.SourceContext
->>>>>>> f752d9c368e68b7e2c944487d5b437356c817048
 
-@virtualize
 object query_staged {
-<<<<<<< HEAD
 trait QueryCompiler extends Dsl with StagedQueryProcessor
 with ScannerBase with TimerBase{
-=======
-
-trait QueryCompiler extends Dsl with StagedQueryProcessor with ScannerBase {
-
->>>>>>> f752d9c368e68b7e2c944487d5b437356c817048
   override def version = "query_staged"
 
 /**
@@ -215,7 +206,7 @@ Data Structure Implementations
     val hashMask = hashSize - 1
     val htable = NewArray[Int](hashSize)
     for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
-    def clear = {
+     def clear = {
       keyCount = 0
       for (i <- 0 until hashSize) { htable(i) = -1 }
     }

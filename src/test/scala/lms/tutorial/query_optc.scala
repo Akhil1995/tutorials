@@ -28,14 +28,8 @@ Input File Tokenizer
     var pos = 0
 
     def next(d: Rep[Char]) = {
-<<<<<<< HEAD
-      if(pos>=fl){
-        data = mmap[Char](fd,fl)
-      }
-      val start = pos: Rep[Int] // force read
-=======
+
       val start: Rep[Int] = pos // force read
->>>>>>> f752d9c368e68b7e2c944487d5b437356c817048
       while (data(pos) != d) pos += 1
       val len:Rep[Int] = pos - start
       pos += 1
