@@ -6,6 +6,7 @@ target
 
 # IntelliJ project files
 .idea/
+.metadata/
 
 # Test output
 src/out/*.actual.scala
