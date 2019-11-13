@@ -15,7 +15,7 @@ import lms.core.virtualize
 @virtualize
 object query_staged0 {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
-with ScannerBase with TimerBase {
+with ScannerBase {
   override def version = "query_staged0"
 
 /**

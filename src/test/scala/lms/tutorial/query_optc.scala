@@ -24,7 +24,7 @@ Input File Tokenizer
   class Scanner(name: Rep[String]) {
     val fd = open(name)
     val fl = filelen(fd)
-    var data = mmap[Char](fd,fl)
+    val data = mmap[Char](fd,fl)
     var pos = 0
 
     def next(d: Rep[Char]) = {

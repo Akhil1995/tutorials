@@ -8,17 +8,14 @@ Outline:
 */
 package scala.lms.tutorial
 
-import scala.concurrent.Future
-import scala.lms.common._
-import scala.lms.core.stub._
-
 import lms.core.stub._
 import lms.core.virtualize
 import lms.macros.SourceContext
 
+@virtualize
 object query_staged {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
-with ScannerBase with TimerBase{
+with ScannerBase {
   override def version = "query_staged"
 
 /**
@@ -123,18 +120,17 @@ Query Interpretation = Compilation
       }
     case Group(keys, agg, parent) =>
       val hm = new HashMapAgg(keys, agg)
-      val t = newTimer()
       var cnt = 0
-      var time = t.currentTime()
+      var time = timestamp // time should be updated at one point no?
       val tm = new HashMapAgg(keys,agg)
       execOp(parent) { rec =>
         hm(rec(keys)) += rec(agg)
         cnt += 1
-        var currentTime = t.currentTime()
-        if (currentTime-time > 5000) {
+        val currentTime = timestamp
+        if (currentTime - time > 5000000L) {
           hm foreach { (k, a) =>
-            var rec1 = new Record(k ++ a, keys ++ agg)
-            printFields(rec1.fields)
+            val rec1 = new Record(k ++ a, keys ++ agg)
+            // printFields(rec1.fields)
             yld(rec1)
           }
           cnt = 0
@@ -208,7 +204,7 @@ Data Structure Implementations
     for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
      def clear = {
       keyCount = 0
-      for (i <- 0 until hashSize) { htable(i) = -1 }
+      for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 }
     }
 
 

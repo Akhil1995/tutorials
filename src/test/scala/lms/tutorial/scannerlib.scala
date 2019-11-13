@@ -51,6 +51,7 @@ class Scanner(filename: String) {
 
 class EventHandler(srcs: (String, Int)*) {
 
+  val debug = false
   def run(f: (Int, StringScanner) => Unit) = {
 
     val selector = Selector.open()
@@ -71,7 +72,11 @@ class EventHandler(srcs: (String, Int)*) {
             val buffer = ByteBuffer.allocate(256);
             val client = key.channel.asInstanceOf[SocketChannel];
             client.read(buffer)
-            f(socks.indexOf(client), new StringScanner(new String(buffer.array).trim()))
+            val str = new String(buffer.array).trim
+            if (debug) println(s"""Accept "${str.map(_.toInt.toHexString).mkString}"""")
+            if (str.length > 0) {
+              f(socks.indexOf(client), new StringScanner(str))
+            }
           }
         }
       }

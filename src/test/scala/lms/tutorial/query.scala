@@ -302,9 +302,9 @@ object Run {
 
   @virtualize
   def scala_engine =
-    new DslDriver[String,Unit] with ScannerExp with TimerExp
+    new DslDriver[String,Unit] with ScannerExp
     with StagedEngine with MainEngine with query_staged.QueryCompiler { q =>
-      override val codegen = new DslGen with ScalaGenScanner with ScalaGenTimer{
+      override val codegen = new DslGen with ScalaGenScanner {
         val IR: q.type = q
       }
       override def snippet(fn: Rep[String]): Rep[Unit] = run
@@ -380,6 +380,7 @@ object Run {
     } catch {
       case ex: Exception =>
         println("ERROR: " + ex)
+        ex.printStackTrace
     }
   }
 }
