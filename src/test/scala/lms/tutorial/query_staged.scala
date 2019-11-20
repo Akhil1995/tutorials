@@ -197,7 +197,6 @@ Data Structure Implementations
 
   // common base class to factor out commonalities of group and join hash tables
   // TODO: add this as a test
-  // FIXME: make removing optional to generate better code when not needed
   // implicit def toFields(x: Int) = Vector(unit(x.toString))
   // val hm = new HashMapAgg(Vector("key"), Vector(), true)
 
