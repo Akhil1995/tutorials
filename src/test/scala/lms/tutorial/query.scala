@@ -375,7 +375,7 @@ object Run {
 
     try {
       engine.prepare
-      println(s"source code:\n\n${engine.code}")
+      println(s"source code:\n\n${indentutils.indent(engine.code)}")
       utils.time("eval")(engine.eval)
     } catch {
       case ex: Exception =>
