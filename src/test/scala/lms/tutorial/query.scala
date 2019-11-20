@@ -271,7 +271,11 @@ trait Engine extends QueryProcessor with SQLParser {
   def filename: String
   def eval: Unit
   def prepare: Unit = {}
-  def run: Unit = execQuery(PrintCSV(parseSql(query)))
+  def run: Unit = {
+    val op = PrintCSV(parseSql(query))
+    System.out.println(s">> $op")
+    execQuery(op)
+  }
   def code: String
   def evalString = {
     val source = new java.io.ByteArrayOutputStream()

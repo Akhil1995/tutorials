@@ -126,9 +126,8 @@ Query Interpretation = Compilation
       }
     case Group(keys, agg, parent) =>
       val hm = new HashMapAgg(keys, agg)
-      var cnt = 0
-      var time = timestamp // time should be updated at one point no?
-      val tm = new HashMapAgg(keys,agg)
+      // var cnt = 0
+      // var time = timestamp // time should be updated at one point no?
       execOp(parent) { rec =>
         hm(rec(keys)) += rec(agg)
       }
@@ -138,6 +137,27 @@ Query Interpretation = Compilation
           yld(rec1)
         }
         hm.clear
+      }
+    case GroupR(keys, agg, parent) =>
+      val c = var_new(5)
+      val hm = new HashMapAgg(keys, agg)
+      var cnt = var_new(0)
+      // var time = timestamp // time should be updated at one point no?
+      execOp(parent) { rec =>
+        hm(rec(keys):+ cnt) += rec(agg)
+      }
+      eventHandler.registerInterval(1000L) {
+        val tm = new HashMapAgg(keys,agg)
+        cnt = (cnt + 1)%c
+        hm foreach { (k, a) =>
+          tm(k.tail) += a
+          if(k.head == cnt)
+            hm(k) -= a
+        }
+        tm foreach { (k, a) =>
+          val rec1 = new Record(k ++ a, keys ++ agg)
+          yld(rec1)
+        }
       }
         //Thread.sleep(5000)
     case HashJoin(left, right) =>
@@ -171,7 +191,7 @@ Query Interpretation = Compilation
 
     val srcsAddress = eventHandler.srcs.map { case ((addr, port), _) => s"""("$addr", $port)""" }.mkString(",")
     val intervals = eventHandler.intervals.headOption.map { case (i, _) => s"Seq($i)"} getOrElse("Seq(0)")
-    val default = eventHandler.intervals.headOption.map(_._2)
+    val default = eventHandler.intervals.headOption.map { case (_, f) => f }
     val handler = unchecked[Handler](s"new scala.lms.tutorial.EventHandler($intervals, $srcsAddress)")
 
     handler.run { (streamId: Rep[Int], content: Rep[StringScanner]) =>
@@ -206,7 +226,7 @@ Data Structure Implementations
     val hashMask = hashSize - 1
     val htable = NewArray[Int](hashSize)
     for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
-     def clear = {
+    def clear = {
       keyCount = 0
       for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 }
     }
