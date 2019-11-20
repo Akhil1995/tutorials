@@ -196,6 +196,38 @@ Data Structure Implementations
   }
 
   // common base class to factor out commonalities of group and join hash tables
+  // TODO: add this as a test
+  // FIXME: make removing optional to generate better code when not needed
+  // implicit def toFields(x: Int) = Vector(unit(x.toString))
+  // val hm = new HashMapAgg(Vector("key"), Vector())
+
+  // printf("Insert at: ")
+  // for (value <- new Range(0, 15, 1)) {
+  //   val pos = hm.lookupOrUpdate(value) { _ => }
+  //   printf("%d, ", pos)
+  // }
+  // printf("\n")
+
+  // printf("In the map: ")
+  // hm foreach { (key, value) => printf("%s, ", key.head) }
+  // printf("\n")
+
+  // for (value <- new Range(0, 15, 1)) if (value % 3 == 0) hm.remove(value)
+
+  // printf("In the map: ")
+  // hm foreach { (key, value) => printf("%s, ", key.head) }
+  // printf("\n")
+
+  // printf("Insert at: ")
+  // for (value <- new Range(15, 22, 1)) {
+  //   val pos = hm.lookupOrUpdate(value) { _ => }
+  //   printf("%d, ", pos)
+  // }
+  // printf("\n")
+
+  // printf("In the map: ")
+  // hm foreach { (key, value) => printf("%s, ", key.head) }
+  // printf("\n")
 
   class HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
@@ -203,29 +235,40 @@ Data Structure Implementations
     val keys = new ArrayBuffer[String](keysSize, keySchema)
     val keyCount = var_new(0)
 
+    val oldKeys = NewArray[Int](keysSize) // used as a LIFO
+    val oldKeyCount = var_new(-1)
+
     val hashMask = hashSize - 1
     val htable = NewArray[Int](hashSize)
-    for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
-     def clear = {
+    for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
+    def clear = {
       keyCount = 0
       for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 }
     }
 
 
+    def remove(k: Fields) = lookupPosInternal(k) { pos =>
+      oldKeyCount += 1
+      oldKeys(oldKeyCount) = htable(pos)
+      htable(pos) = -1
+    }
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))
-    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] =
-    comment[Int]("hash_lookup") {
-      val h = fieldsHash(k).toInt
-      var pos = h & hashMask
-      while (htable(pos) != -1 && !fieldsEqual(keys(htable(pos)),k)) {
-        pos = (pos + 1) & hashMask
-      }
+    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] = lookupPosInternal(k) { pos =>
       if (init.isDefined) {
         if (htable(pos) == -1) {
-          val keyPos = keyCount: Rep[Int] // force read
+          // If key were removed, used empty space
+          // otherwise use next available
+          val keyPos = if (oldKeyCount == -1) {
+            val keyPos = keyCount: Rep[Int] // force read
+            keyCount += 1
+            keyPos
+          } else {
+            val keyPos = oldKeys(oldKeyCount)
+            oldKeyCount -= 1
+            keyPos
+          }
           keys(keyPos) = k
-          keyCount += 1
           htable(pos) = keyPos
           init.get(keyPos)
           keyPos
@@ -234,6 +277,16 @@ Data Structure Implementations
         }
       } else {
         htable(pos)
+      }
+    }
+    def lookupPosInternal[T:Manifest](k: Fields)(action: Rep[Int] => Rep[T]) = {
+      comment[T]("hash_lookup") {
+        val h = fieldsHash(k).toInt
+        var pos = h & hashMask
+        while (htable(pos) != -1 && !fieldsEqual(keys(htable(pos)),k)) {
+          pos = (pos + 1) & hashMask
+        }
+        action(pos)
       }
     }
   }
@@ -254,8 +307,15 @@ Data Structure Implementations
     }
 
     def foreach(f: (Fields,Fields) => Rep[Unit]): Rep[Unit] = {
+      val sOldKeys = oldKeys.sort(oldKeyCount + 1) // for now generate .slice(0, lenght).sorted
+      var oldKeySeen = 0
       for (i <- 0 until keyCount) {
-        f(keys(i),values(i).map(_.ToString))
+        // skip deleted keys
+        if (oldKeySeen > oldKeyCount || i != oldKeys(oldKeySeen)) {
+          f(keys(i),values(i).map(_.ToString))
+        } else {
+          oldKeySeen += 1
+        }
       }
     }
 
@@ -270,6 +330,8 @@ Data Structure Implementations
 
     val buckets = NewArray[Int](dataSize)
     val bucketCounts = NewArray[Int](keysSize)
+
+    override def remove(k: Fields) = ???
 
     def apply(k: Fields) = new {
       def +=(v: Fields) = {
