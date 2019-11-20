@@ -229,6 +229,23 @@ Data Structure Implementations
   // hm foreach { (key, value) => printf("%s, ", key.head) }
   // printf("\n")
 
+  // for (value <- new Range(0, 22, 1)) if (value % 3 == 0) hm.remove(value)
+
+  // printf("In the map: ")
+  // hm foreach { (key, value) => printf("%s, ", key.head) }
+  // printf("\n")
+
+  // printf("Insert at: ")
+  // for (value <- new Range(22, 30, 1)) {
+  //   val pos = hm.lookupOrUpdate(value) { _ => }
+  //   printf("%d, ", pos)
+  // }
+  // printf("\n")
+
+  // printf("In the map: ")
+  // hm foreach { (key, value) => printf("%s, ", key.head) }
+  // printf("\n")
+
   class HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
 
@@ -248,9 +265,12 @@ Data Structure Implementations
 
 
     def remove(k: Fields) = lookupPosInternal(k) { pos =>
-      oldKeyCount += 1
-      oldKeys(oldKeyCount) = htable(pos)
-      htable(pos) = -1
+      val idx = htable(pos)
+      if (idx != -1) {
+        oldKeyCount += 1
+        oldKeys(oldKeyCount) = idx
+        htable(pos) = -1
+      }
     }
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))
@@ -295,6 +315,7 @@ Data Structure Implementations
   class HashMapAgg(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema: Schema, schema: Schema) {
     import hashDefaults._
 
+    val debug = false
     val values = new ArrayBuffer[Int](keysSize, schema) // assuming all summation fields are numeric
 
     def apply(k: Fields) = new {
@@ -311,12 +332,14 @@ Data Structure Implementations
       var oldKeySeen = 0
       for (i <- 0 until keyCount) {
         // skip deleted keys
-        if (oldKeySeen > oldKeyCount || i != oldKeys(oldKeySeen)) {
+        if (oldKeySeen > oldKeyCount || i != sOldKeys(oldKeySeen)) {
           f(keys(i),values(i).map(_.ToString))
         } else {
           oldKeySeen += 1
         }
       }
+
+      if (debug) if (oldKeySeen <= oldKeyCount) printf("Weird!! %d %d\n", oldKeySeen, oldKeyCount)
     }
 
   }
