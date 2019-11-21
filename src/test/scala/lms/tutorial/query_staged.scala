@@ -197,53 +197,6 @@ Data Structure Implementations
 
   // common base class to factor out commonalities of group and join hash tables
   // TODO: add this as a test
-  // implicit def toFields(x: Int) = Vector(unit(x.toString))
-  // val hm = new HashMapAgg(Vector("key"), Vector(), true)
-
-  // printf("Insert at: ")
-  // for (value <- new Range(0, 15, 1)) {
-  //   val pos = hm.lookupOrUpdate(value) { _ => }
-  //   printf("%d, ", pos)
-  // }
-  // printf("\n")
-
-  // printf("In the map: ")
-  // hm foreach { (key, value) => printf("%s, ", key.head) }
-  // printf("\n")
-
-  // for (value <- new Range(0, 15, 1)) if (value % 3 == 0) hm.remove(value)
-
-  // printf("In the map: ")
-  // hm foreach { (key, value) => printf("%s, ", key.head) }
-  // printf("\n")
-
-  // printf("Insert at: ")
-  // for (value <- new Range(15, 22, 1)) {
-  //   val pos = hm.lookupOrUpdate(value) { _ => }
-  //   printf("%d, ", pos)
-  // }
-  // printf("\n")
-
-  // printf("In the map: ")
-  // hm foreach { (key, value) => printf("%s, ", key.head) }
-  // printf("\n")
-
-  // for (value <- new Range(0, 22, 1)) if (value % 3 == 0) hm.remove(value)
-
-  // printf("In the map: ")
-  // hm foreach { (key, value) => printf("%s, ", key.head) }
-  // printf("\n")
-
-  // printf("Insert at: ")
-  // for (value <- new Range(22, 30, 1)) {
-  //   val pos = hm.lookupOrUpdate(value) { _ => }
-  //   printf("%d, ", pos)
-  // }
-  // printf("\n")
-
-  // printf("In the map: ")
-  // hm foreach { (key, value) => printf("%s, ", key.head) }
-  // printf("\n")
 
   class HashMapBase(keySchema: Schema, schema: Schema, canDelete: Boolean) {
     import hashDefaults._
@@ -329,11 +282,12 @@ Data Structure Implementations
     }
 
     def foreach(f: (Fields,Fields) => Rep[Unit]): Rep[Unit] = {
-      val sOldKeys = oldKeys.sort(oldKeyCount + 1) // for now generate .slice(0, lenght).sorted
+      val nbOldKey = oldKeyCount: Rep[Int] // read number of key to make remove foreach safe
+      val sOldKeys = oldKeys.sort(nbOldKey + 1) // for now generate .slice(0, lenght).sorted
       var oldKeySeen = 0
       for (i <- 0 until keyCount) {
         // skip deleted keys
-        if (unit(!canDelete) || oldKeySeen > oldKeyCount || i != sOldKeys(oldKeySeen)) {
+        if (unit(!canDelete) || oldKeySeen > nbOldKey || i != sOldKeys(oldKeySeen)) {
           f(keys(i),values(i).map(_.ToString))
         } else {
           oldKeySeen += 1
