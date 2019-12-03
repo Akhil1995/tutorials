@@ -70,7 +70,7 @@ class EventHandler(intervals: Seq[Int], srcs: (String, Int)*) {
       var time = System.nanoTime + intervals.head * 1000000L
       while (true) {
         var delta = time - System.nanoTime
-        if (intervals.head > 0L && delta <= 0L) { // timeout already occurs!!!
+        if (intervals.head > 0L && delta <= 1000000L) { // timeout already occurs!!!
           time = System.nanoTime + intervals.head * 1000000L
           f(socks.length, null)
           delta = (time - System.nanoTime) / 1000000L

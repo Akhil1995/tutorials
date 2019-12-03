@@ -18,7 +18,7 @@ autoCompilerPlugins := true
 
 val paradiseVersion = "2.1.0"
 
-addCompilerPlugin("org.scalamacros" % "paradise" % paradiseVersion cross CrossVersion.full)
+addCompilerPlugin("org.scalamac ros" % "paradise" % paradiseVersion cross CrossVersion.full)
 
 // tests are not thread safe
 parallelExecution in Test := false

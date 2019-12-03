@@ -130,7 +130,7 @@ trait SQLParser extends QueryAST {
       opt("where" ~> predicate ^^ { p => Filter(p, _:Operator) }) ^^ { _.getOrElse(op => op)}
     def groupClause: Parser[Operator=>Operator] =
       opt("group" ~> "by" ~> fieldIdList ~ ("sum" ~> fieldIdList) ^^ {
-        case p1 ~ p2 => Group(p1,p2, _:Operator) }) ^^ { _.getOrElse(op => op)}
+        case p1 ~ p2 => GroupR(p1,p2, _:Operator) }) ^^ { _.getOrElse(op => op)}
 
     def joinClause: Parser[Operator] =
       ("nestedloops" ~> repsep(tableClause, "join") ^^ { _.reduceLeft((a,b) => Join(a,b)) }) |
@@ -311,7 +311,10 @@ object Run {
       override val codegen = new DslGen with ScalaGenScanner {
         val IR: q.type = q
       }
-      override def snippet(fn: Rep[String]): Rep[Unit] = run
+      override def snippet(fn: Rep[String]): Rep[Unit] = {
+        // run
+
+      }
       override def prepare: Unit = precompile
       override def eval: Unit = eval(filename)
     }
@@ -379,7 +382,7 @@ object Run {
 
     try {
       engine.prepare
-      println(s"source code:\n\n${engine.code}")
+      println(s"source code:\n\n${indentutils.indent(engine.code)}")
       utils.time("eval")(engine.eval)
     } catch {
       case ex: Exception =>

@@ -126,11 +126,8 @@ Query Interpretation = Compilation
       }
     case Group(keys, agg, parent) =>
       val hm = new HashMapAgg(keys, agg)
-      keys foreach {k => println(k+"a")}
-      agg foreach {k => println(k+"b")}
-      var cnt = 0
-      var time = timestamp // time should be updated at one point no?
-      val tm = new HashMapAgg(keys,agg)
+      // var cnt = 0
+      // var time = timestamp // time should be updated at one point no?
       execOp(parent) { rec =>
         hm(rec(keys)) += rec(agg)
       }
@@ -141,12 +138,29 @@ Query Interpretation = Compilation
         }
         hm.clear
       }
+    case GroupR(keys, agg, parent) =>
+      val c = 5
+      val hm = new HashMapAgg(keys, agg,c)
+      val cnt = var_new(0)
+      // var time = timestamp // time should be updated at one point no?
+      execOp(parent) { rec =>
+        hm(rec(keys), cnt) += rec(agg)
+      }
+      eventHandler.registerInterval(1000L) {
+        hm(cnt) foreach { (k, a) =>
+          yld(new Record(k++a,keys++agg))
+        }
+        cnt = (cnt+1)%c
+      }
         //Thread.sleep(5000)
     case HashJoin(left, right) =>
       val keys = resultSchema(left) intersect resultSchema(right)
       val hm = new HashMapBuffer(keys, resultSchema(left))
+      // another hashmap, quick fix
       execOp(left) { rec1 =>
-        hm(rec1(keys)) += rec1.fields
+        hm(rec1(keys)) foreach { rec2 =>
+          yld(Record(rec2.fields ++ rec1.fields, rec1.schema ++ rec2.schema))
+        }
       }
       execOp(right) { rec2 =>
         hm(rec2(keys)) foreach { rec1 =>
@@ -173,7 +187,7 @@ Query Interpretation = Compilation
 
     val srcsAddress = eventHandler.srcs.map { case ((addr, port), _) => s"""("$addr", $port)""" }.mkString(",")
     val intervals = eventHandler.intervals.headOption.map { case (i, _) => s"Seq($i)"} getOrElse("Seq(0)")
-    val default = eventHandler.intervals.headOption.map(_._2)
+    val default = eventHandler.intervals.headOption.map { case (_, f) => f }
     val handler = unchecked[Handler](s"new scala.lms.tutorial.EventHandler($intervals, $srcsAddress)")
 
     handler.run { (streamId: Rep[Int], content: Rep[StringScanner]) =>
@@ -198,73 +212,131 @@ Data Structure Implementations
   }
 
   // common base class to factor out commonalities of group and join hash tables
+  // TODO: add this as a test
 
-  class HashMapBase(keySchema: Schema, schema: Schema) {
+  class HashMapBase(keySchema: Schema, schema: Schema, canDelete: Boolean) {
     import hashDefaults._
 
     val keys = new ArrayBuffer[String](keysSize, keySchema)
     val keyCount = var_new(0)
 
+    val oldKeys = NewArray[Int](keysSize) // used as a LIFO
+    val oldKeyCount = var_new(-1)
+
     val hashMask = hashSize - 1
     val htable = NewArray[Int](hashSize)
-    for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
-     def clear = {
+    for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 } //ambiguous reference to overloaded definition can be fixed with type annotation
+    def clear = {
       keyCount = 0
       for (i <- 0 until hashSize: Rep[Range]) { htable(i) = -1 }
     }
 
 
+    def remove(k: Fields) = {
+      if (!canDelete) ???
+      lookupPosInternal(k) { pos =>
+        val idx = htable(pos)
+        if (idx != -1) {
+          oldKeyCount += 1
+          oldKeys(oldKeyCount) = idx
+          htable(pos) = -1
+        }
+      }
+    }
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))
-    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] =
-    comment[Int]("hash_lookup") {
-      val h = fieldsHash(k).toInt
-      var pos = h & hashMask
-      while (htable(pos) != -1 && !fieldsEqual(keys(htable(pos)),k)) {
-        pos = (pos + 1) & hashMask
-      }
-      if (init.isDefined) {
-        if (htable(pos) == -1) {
+    def lookupInternal(k: Fields, init: Option[Rep[Int]=>Rep[Unit]]): Rep[Int] = lookupPosInternal(k) { pos =>
+      // FIXME: need use unit and rely on constant folding
+      // otherwise the second condition is always false (type differ and no lifting is done)
+      // could be nice that if (Boolean && Rep[Boolean]) can be handle correctly
+      if (unit(init.isDefined) && htable(pos) == -1) {
+        // If key were removed, used empty space
+        // otherwise use next available
+        val keyPos = if (unit(!canDelete) || oldKeyCount == -1) {
           val keyPos = keyCount: Rep[Int] // force read
-          keys(keyPos) = k
           keyCount += 1
-          htable(pos) = keyPos
-          init.get(keyPos)
           keyPos
         } else {
-          htable(pos)
+          val keyPos = oldKeys(oldKeyCount)
+          oldKeyCount -= 1
+          keyPos
         }
+        keys(keyPos) = k
+        htable(pos) = keyPos
+        init.get(keyPos)
+        keyPos
       } else {
         htable(pos)
+      }
+    }
+    def lookupPosInternal[T:Manifest](k: Fields)(action: Rep[Int] => Rep[T]) = {
+      comment[T]("hash_lookup") {
+        val h = fieldsHash(k).toInt
+        var pos = h & hashMask
+        while (htable(pos) != -1 && !fieldsEqual(keys(htable(pos)),k)) {
+          pos = (pos + 1) & hashMask
+        }
+        action(pos)
       }
     }
   }
 
   // hash table for groupBy, storing sums
-  class HashMapAgg(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema: Schema, schema: Schema) {
+  class HashMapAgg(keySchema: Schema, schema: Schema, bucketSize: Int = 1, canDelete: Boolean = false) extends HashMapBase(keySchema, schema, canDelete) {
     import hashDefaults._
 
-    val values = new ArrayBuffer[Int](keysSize, schema) // assuming all summation fields are numeric
+    val debug = false
+    val values = new ArrayBuffer[Int](keysSize, schema, bucketSize) // assuming all summation fields are numeric
+    val bitmask = new ArrayBuffer[Boolean](keysSize, Vector("idx"), bucketSize)
 
-    def apply(k: Fields) = new {
+    def apply(k: Fields, off: Rep[Int] = 0) = new {
       def +=(v: Fields) = {
         val keyPos = lookupOrUpdate(k) { keyPos =>
-          values(keyPos) = schema.map(_ => 0:Rep[Int])
+          for (off <- 0 until bucketSize: Rep[Range])
+            values(keyPos, off) = schema.map(_ => 0:Rep[Int])
         }
-        values(keyPos) = (values(keyPos), v.map(_.toInt)).zipped map (_ + _)
+        values(keyPos, off) = (values(keyPos, off), v.map(_.toInt)).zipped map (_ + _)
+        bitmask(keyPos, off) = true
+      }
+    }
+
+    def apply(off: Rep[Int]) = new {
+      def foreach(f: (Fields,Fields) => Rep[Unit]) = {
+        for (i <- 0 until keyCount) {
+          for (off1 <- 0 until bucketSize: Rep[Range]) {
+            if (off != off1 && bitmask(keyPos, off1))
+              values(i, off) = (values(i, off1), v.map(_.toInt)).zipped map (_ + _)
+          }
+          // skip deleted keys\
+          f(keys(i),values(i, off).map(_.ToString))
+
+          // remove
+          values(i, off) = schema.map(_ => 0:Rep[Int])
+          bitmask(keyPos, off) = false
+        }
       }
     }
 
     def foreach(f: (Fields,Fields) => Rep[Unit]): Rep[Unit] = {
+      val nbOldKey = oldKeyCount: Rep[Int] // read number of key to make remove foreach safe
+      val sOldKeys = oldKeys.sort(nbOldKey + 1) // for now generate .slice(0, lenght).sorted
+      var oldKeySeen = 0
       for (i <- 0 until keyCount) {
-        f(keys(i),values(i).map(_.ToString))
+        // skip deleted keys
+        if (unit(!canDelete) || oldKeySeen > nbOldKey || i != sOldKeys(oldKeySeen)) {
+          f(keys(i),values(i).map(_.ToString))
+        } else {
+          oldKeySeen += 1
+        }
       }
+
+      if (debug) if (oldKeySeen <= oldKeyCount) printf("Weird!! %d %d\n", oldKeySeen, oldKeyCount)
     }
 
   }
 
   // hash table for joins, storing lists of records
-  class HashMapBuffer(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema: Schema, schema: Schema) {
+  class HashMapBuffer(keySchema: Schema, schema: Schema) extends HashMapBase(keySchema, schema, false) {
     import hashDefaults._
 
     val data = new ArrayBuffer[String](dataSize, schema)
@@ -300,8 +372,8 @@ Data Structure Implementations
     }
   }
 
-  class ArrayBuffer[T:Typ](dataSize: Int, schema: Schema) {
-    val buf = schema.map(f => NewArray[T](dataSize))
+  class ArrayBuffer[T:Typ](dataSize: Int, schema: Schema,bucketSize:Int = 1) {
+    val buf = schema.map(f => NewArray[T](dataSize * bucketSize))
     var len = 0
     def +=(x: Seq[Rep[T]]) = {
       this(len) = x
@@ -310,8 +382,12 @@ Data Structure Implementations
     def update(i: Rep[Int], x: Seq[Rep[T]]) = {
       (buf,x).zipped.foreach((b,x) => b(i) = x)
     }
-    def apply(i: Rep[Int]) = {
-      buf.map(b => b(i))
+    def update(i: Rep[Int], off: Rep[Int], x: Seq[Rep[T]]) = {
+      (buf,x).zipped.foreach((b,x) => b(i*bucketSize+off) = x)
+    }
+    def apply(i: Rep[Int], off:Rep[Int] = 0) = {
+      buf.map(b => b(i*bucketSize+off))
     }
   }
 }}
+
