@@ -35,6 +35,10 @@ package scala.lms.tutorial
 
 import org.scalatest.FunSuite
 
+import lms.core.stub._
+import lms.core.virtualize
+import lms.macros.SourceContext
+
 
 /**
 Regular Expression Matcher
@@ -129,6 +133,7 @@ The staged interpreter simply consist in wrapping the variable
 parameters in ``Rep[_]`` types. Otherwise, the code is the same.
 */
 
+@virtualize
 trait StagedRegexpMatcher extends Dsl {
 
   /* search for regexp anywhere in text */
@@ -173,7 +178,10 @@ trait StagedRegexpMatcher extends Dsl {
   }
 
   def matchchar(c: Char, t: Rep[Char]): Rep[Boolean] = {
-    c == '.' || c == t
+    //c == '.' || c == t
+    // NOTE: implicits with macros currently do not 
+    // catch (Boolean || Rep[Boolean])
+    if (c == '.') true else c == t
   }
 }
 

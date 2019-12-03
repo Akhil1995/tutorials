@@ -24,6 +24,9 @@ by client code. Thus, they are similar to coroutines.
 
 package scala.lms.tutorial
 
+import lms.core.stub._
+import lms.core.virtualize
+import lms.macros.SourceContext
 
 /**
 Regexp Matchers as Nondeterministic Finite Automata (NFA)
@@ -54,14 +57,15 @@ Here is a simple example for the fixed regular expression `.*AAB`:
       }
     }
 
+
+    // The generated code for the DFA is shown at the end.
+    check("aab", p.code)
+
     // Some tests.
     assertResult(true){p.matches("AAB")}
     assertResult(false){p.matches("AAC")}
     assertResult(true){p.matches("AACAAB")}
     assertResult(true){p.matches("AACAABAAC")}
-
-    // The generated code for the DFA is shown at the end.
-    check("aab", p.code)
   }
 }
 
@@ -71,7 +75,7 @@ of producing matchers from textual regular expressions. However, the point
 here is to demonstrate how the implementation works.
 */
 
-trait NFAOps extends scala.lms.util.ClosureCompare {
+trait NFAOps extends lms.util.ClosureCompare {
 /**
 The given matcher uses an API that models nondeterministic finite automata
 (NFA):
@@ -129,14 +133,16 @@ which is just a thin wrapper over an unstaged API with no `Rep`s:
 case class Automaton[@specialized(Char) I, @specialized(Boolean) O](
   out: O, next: I => Automaton[I,O])
 
+@virtualize
 trait DFAOps extends Dsl {
-  implicit def dfaTyp: Typ[DfaState]
+  //implicit def dfaTyp: Typ[DfaState]
   type DfaState = Automaton[Char,Boolean]
   type DIO = Rep[DfaState]
   def dfa_trans(f: Rep[Char] => DIO): DIO = dfa_trans(false)(f)
   def dfa_trans(e: Boolean)(f: Rep[Char] => DIO): DIO
 }
 
+@virtualize
 trait NFAtoDFA extends NFAOps with DFAOps {
 /**
 Translating an NFA to a DFA is accomplished by creating a DFA state for each
@@ -194,18 +200,20 @@ works because the character guards are staging time values.
       }
   }
 
-  def infix_contains(s: CharSet, c: Rep[Char]): Rep[Boolean] = s match {
-    case C(c1) => c == c1
-    case W => unit(true)
-  }
-  def infix_knowing(s1: CharSet, s2: CharSet): Option[CharSet] = (s1,s2) match {
-    case (W,_) => Some(W)
-    case (C(c1),C(c2)) if c1 == c2 => Some(W)
-    case _ => None
-  }
-  def infix_knowing_not(s1: CharSet, s2: CharSet): Option[CharSet] = (s1,s2) match {
-    case (C(c1), C(c2)) if c1 == c2 => None
-    case _ => Some(s1)
+  implicit class CharSetOps(s1: CharSet) {
+    def contains(c: Rep[Char]): Rep[Boolean] = s1 match {
+      case C(c1) => c == c1
+      case W => unit(true)
+    }
+    def knowing(s2: CharSet): Option[CharSet] = (s1,s2) match {
+      case (W,_) => Some(W)
+      case (C(c1),C(c2)) if c1 == c2 => Some(W)
+      case _ => None
+    }
+    def knowing_not(s2: CharSet): Option[CharSet] = (s1,s2) match {
+      case (C(c1), C(c2)) if c1 == c2 => None
+      case _ => Some(s1)
+    }
   }
 }
 
@@ -220,7 +228,7 @@ Generated State Machine Code
 ----------------------------
 */
 trait DFAOpsExp extends DslExp with DFAOps {
-  implicit def dfaTyp: Typ[DfaState] = manifestTyp
+  //implicit def dfaTyp: Typ[DfaState] = manifestTyp
   case class DFAState(e: Boolean, f: Rep[Char => DfaState]) extends Def[DfaState]
   def dfa_trans(e: Boolean)(f: Rep[Char] => DIO): DIO = DFAState(e, doLambda(f))
 }
@@ -228,11 +236,12 @@ trait DFAOpsExp extends DslExp with DFAOps {
 trait ScalaGenDFAOps extends DslGen {
   val IR: DFAOpsExp
   import IR._
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case dfa@DFAState(b,f) =>
-      emitValDef(sym, "scala.lms.tutorial.Automaton(" + quote(b) + ", " + quote(f) + ")")
-    case _ => super.emitNode(sym, rhs)
-  }
+  //STUB
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+  //   case dfa@DFAState(b,f) =>
+  //     emitValDef(sym, "scala.lms.tutorial.Automaton(" + quote(b) + ", " + quote(f) + ")")
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 /**

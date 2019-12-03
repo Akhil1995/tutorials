@@ -1,0 +1,10 @@
+staging 176003
+codegen;DeadCodeElimCG;A_First_Path 8982
+codegen;DeadCodeElimCG;Extra_Path_1 2082
+codegen;DeadCodeElimCG;Extra_Path_2 1058
+codegen;DeadCodeElimCG;Extra_Path_3 381
+codegen;DeadCodeElimCG;Extra_Path_4 425
+codegen;DeadCodeElimCG;Recreate_the_graph 4569
+codegen;DeadCodeElimCG 1052
+codegen 39026
+scalac 2132787

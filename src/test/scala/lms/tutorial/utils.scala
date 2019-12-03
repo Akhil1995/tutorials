@@ -3,15 +3,22 @@ package scala.lms.tutorial
 import java.io._
 import org.scalatest.FunSuite
 
+import lms.core.utils
+
+import lms.macros.EmbeddedControls
+
 trait LibSuite extends FunSuite {
   def dataFilePath(csv: String) = "src/data/" + csv
 }
 
-trait TutorialFunSuite extends LibSuite {
+trait TutorialFunSuite extends LibSuite with EmbeddedControls {
   val overwriteCheckFiles = false // should be false; temporary set to true only to simplify development
 
   val prefix = "src/out/"
   val under: String
+  override protected def test(testName: String,testTags: org.scalatest.Tag*)(testFun: => Any)(implicit pos: org.scalactic.source.Position): Unit = {
+    super.test(testName,testTags:_*)(utils.time(under)(utils.time(testName)(testFun)))(pos)
+  }
   def readFile(name: String): String = {
     try {
       val buf = new Array[Byte](new File(name).length().toInt)
@@ -34,10 +41,8 @@ trait TutorialFunSuite extends LibSuite {
     out.close()
   }
   def checkOut(label: String, suffix: String, thunk: => Unit) = {
-    val output = new ByteArrayOutputStream()
-    scala.Console.setOut(new PrintStream(output))
-    thunk
-    check(label, output.toString(), suffix = suffix)
+    val output = utils.captureOut(thunk)
+    check(label, output, suffix = suffix)
   }
   def check(label: String, raw_code: String, suffix: String = "scala") = {
     val fileprefix = prefix+under+label
@@ -54,7 +59,9 @@ trait TutorialFunSuite extends LibSuite {
       if (f.exists) f.delete
     }
     if (!overwriteCheckFiles) {
-      assert(expected == code, name)
+      // XXX TEMP
+      //if (suffix == "csv")
+        assert(expected == code, name)
     }
   }
   def indent(str: String) = {
@@ -101,47 +108,4 @@ trait TutorialFunSuite extends LibSuite {
   }
 }
 
-object utils {
-  def time[A](a: => A) = {
-    val now = System.nanoTime
-    val result = a
-    val micros = (System.nanoTime - now) / 1000
-    println("%d microseconds".format(micros))
-    result
-  }
-  def captureLocalOut(func: => Any): String = {
-    val source = new java.io.ByteArrayOutputStream()
-    withOutput(new java.io.PrintStream(source))(func)
-    source.toString
-  }
-  def captureOut(func: => Any): String = {
-    val source = new java.io.ByteArrayOutputStream()
-    withOutputFull(new java.io.PrintStream(source))(func)
-    source.toString
-  }
-  def withOutput[T](out: PrintStream)(f: => Unit): Unit = {
-    scala.Console.withOut(out)(scala.Console.withErr(out)(f))
-  }
-  def devnull(f: => Unit): Unit = {
-    withOutput(nullout)(f)
-  }
-  def nullout = new PrintStream(new OutputStream() {
-    override def write(b: Int) = {}
-    override def write(b: Array[Byte]) = {}
-    override def write(b: Array[Byte], off: Int, len: Int) = {}
-  })
-  def withOutputFull(out: PrintStream)(func: => Unit): Unit = {
-    val oldStdOut = System.out
-    val oldStdErr = System.err
-    try {
-      System.setOut(out)
-      System.setErr(out)
-      scala.Console.withOut(out)(scala.Console.withErr(out)(func))
-    } finally {
-      out.flush()
-      out.close()
-      System.setOut(oldStdOut)
-      System.setErr(oldStdErr)
-    }
-  }
-}
+

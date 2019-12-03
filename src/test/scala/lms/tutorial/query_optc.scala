@@ -8,11 +8,13 @@ Outline:
 */
 package scala.lms.tutorial
 
-import scala.lms.common._
+import lms.core.stub._
+import lms.macros.SourceContext
+import lms.core.virtualize
 
+@virtualize
 object query_optc {
-trait QueryCompiler extends Dsl with StagedQueryProcessor
-with ScannerLowerBase {
+trait QueryCompiler extends Dsl with StagedQueryProcessor with ScannerLowerBase {
   override def version = "query_optc"
 
 /**
@@ -26,15 +28,16 @@ Input File Tokenizer
     var pos = 0
 
     def next(d: Rep[Char]) = {
-      val start = pos: Rep[Int] // force read
+
+      val start: Rep[Int] = pos // force read
       while (data(pos) != d) pos += 1
-      val len = pos - start
+      val len:Rep[Int] = pos - start
       pos += 1
       RString(stringFromCharArray(data,start,len), len)
     }
 
     def nextInt(d: Rep[Char]) = {
-      val start = pos: Rep[Int] // force read
+      //val start = pos: Rep[Int] // force read
       var num = 0
       while (data(pos) != d) {
         num = num * 10 + (data(pos) - '0').toInt
@@ -59,14 +62,15 @@ Low-Level Processing Logic
   }
   case class RString(data: Rep[String], len: Rep[Int]) extends RField {
     def print() = prints(data)
-    def compare(o: RField) = o match { case RString(data2, len2) => if (len != len2) false else {
+    def printLen() = printf("%.*s", len, data)//printl(data, len)
+    def compare(o: RField) = o match { case RString(data2, len2) => if (len == len2) {
       // TODO: we may or may not want to inline this (code bloat and icache considerations).
       var i = 0
       while (i < len && data.charAt(i) == data2.charAt(i)) {
         i += 1
       }
       i == len
-    }}
+    } else false }
     def hash = data.HashCode(len)
   }
   case class RInt(value: Rep[Int]) extends RField {
@@ -98,7 +102,7 @@ Low-Level Processing Logic
       // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
       nextRecord // ignore csv header
     }
-    while (s.hasNext) yld(nextRecord)
+    while (true) yld(nextRecord)
     s.done
   }
 
@@ -205,7 +209,7 @@ Data Structure Implementations
 
     val hashMask = hashSize - 1
     val htable = NewArray[Int](hashSize)
-    for (i <- 0 until hashSize) { htable(i) = -1 }
+    for (i <- 0 until hashSize :Rep[Range]) { htable(i) = -1 }
 
     def lookup(k: Fields) = lookupInternal(k,None)
     def lookupOrUpdate(k: Fields)(init: Rep[Int]=>Rep[Unit]) = lookupInternal(k,Some(init))

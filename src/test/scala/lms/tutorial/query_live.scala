@@ -1,6 +1,6 @@
 package scala.lms.tutorial
 
-import scala.lms.common._
+import lms.core.stub._
 
 object query_live {
 trait QueryInterpreter extends PlainQueryProcessor {
@@ -17,7 +17,7 @@ class QueryLiveTest extends TutorialFunSuite {
 
   def engine =
     new Engine with query_live.QueryInterpreter {
-      override def liftTable(n: Table) = n
+      def code = ""
       override def eval = run
 
     //trait QueryCompiler extends Dsl with StagedQueryProcessor with ScannerBase {

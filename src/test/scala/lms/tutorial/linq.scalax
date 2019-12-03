@@ -1,4 +1,5 @@
-/**
+g/**
+//Records are an issue for @virtualize
 Language Integrated Queries with Normalization
 ==============================================
 
@@ -16,13 +17,18 @@ Outline:
 
 package scala.lms.tutorial
 
-import scala.lms.common._
 import scala.reflect.SourceContext
+
+import lms.core.stub._
+import lms.core.virtualize
+import lms.macros.SourceContext
+import lms.macros.EmbeddedControls
 
 /**
 We first implement a pure, non-staged library version as a baseline.
 */
 
+@virtualize
 trait Shallow extends Util {
   
   // people db schema
@@ -331,6 +337,7 @@ trait Shallow extends Util {
 
 
 // a staged implementation
+@virtualize
 trait Staged extends ScalaOpsPkg with LiftPrimitives with LiftString with StructOps {
   
   def database[T:Typ](s: String): Rep[T]
@@ -503,7 +510,7 @@ trait Staged extends ScalaOpsPkg with LiftPrimitives with LiftString with Struct
       if !exists(
         for {
           e <- org.employees
-          if d.dpt == e.dpt && !exists(
+          if (d.dpt == e.dpt) && !exists(
             for {
               t <- org.tasks
               if e.emp == t.emp && t.tsk == u 
@@ -670,10 +677,8 @@ trait Staged extends ScalaOpsPkg with LiftPrimitives with LiftString with Struct
   //}
 }
 
-
-
-
 // internal staged implementation: IR node classes, rewrites for normalization
+@virtualize
 trait StagedExp extends Staged with ScalaOpsPkgExp with BooleanOpsExpOpt with StructExpOpt {
 
   // IR node representing database("name")
@@ -835,6 +840,7 @@ trait StagedExp extends Staged with ScalaOpsPkgExp with BooleanOpsExpOpt with St
 
 
 // code generator for specific IR nodes -- alternative impl would emit SQL
+@virtualize
 trait ScalaGenStaged extends ScalaCodeGenPkg with ScalaGenStruct {
   val IR: StagedExp
   import IR._
@@ -864,6 +870,7 @@ object Schema extends Shallow
 
 
 // pretty printing for records
+@virtualize
 trait Util {
   abstract class Record extends Product {
     lazy val elems = {
@@ -881,6 +888,7 @@ trait Util {
   }
 }
 
+@virtualize
 abstract class LinqDriver[A:Typ,B:Typ] extends DslDriver[A,B] with Staged with StagedExp { q =>
   override val codegen = new DslGen with ScalaGenStaged {
     val IR: q.type = q
@@ -913,6 +921,7 @@ abstract class LinqDriver[A:Typ,B:Typ] extends DslDriver[A,B] with Staged with S
 
 
 // test cases
+@virtualize
 class TestLinq extends TutorialFunSuite {
   val under = "linq-"
   

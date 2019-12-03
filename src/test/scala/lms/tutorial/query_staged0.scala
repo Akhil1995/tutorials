@@ -8,8 +8,11 @@ Outline:
 */
 package scala.lms.tutorial
 
-import scala.lms.common._
+import lms.core.stub._
+import lms.macros.SourceContext
+import lms.core.virtualize
 
+@virtualize
 object query_staged0 {
 trait QueryCompiler extends Dsl with StagedQueryProcessor
 with ScannerBase {
@@ -36,8 +39,8 @@ Low-Level Processing Logic
       // schema.foreach(f => if (s.next != f) println("ERROR: schema mismatch"))
       nextRecord // ignore csv header
     }
-    while (s.hasNext) yld(nextRecord)
-    s.close
+    while (true) yld(nextRecord)
+      s.close
   }
 
   def printSchema(schema: Schema) = println(schema.mkString(defaultFieldDelimiter.toString))
@@ -89,7 +92,10 @@ Query Interpretation = Compilation
     case PrintCSV(parent) =>
       val schema = resultSchema(parent)
       printSchema(schema)
-      execOp(parent) { rec => printFields(rec.fields) }
+      execOp(parent) { rec =>
+
+        printFields(rec.fields)
+      }
   }
   def execQuery(q: Operator): Unit = execOp(q) { _ => }
 }}
