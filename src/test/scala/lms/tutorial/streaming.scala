@@ -27,7 +27,7 @@ class StreamingTest extends TutorialFunSuite {
       // }
       override def snippet(fn: Rep[String]): Rep[Unit] = {
         implicit def toFields(x: Int) = Vector(unit(x.toString))
-        val hm = new HashMapAgg(Vector("key"), Vector(), true)
+        val hm = new HashMapAgg(Vector("key"), Vector(), unit(true))
 
         printf("Insert at: ")
         for (value <- new Range(0, 15, 1)) {

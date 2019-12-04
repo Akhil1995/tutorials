@@ -147,12 +147,12 @@ Query Interpretation = Compilation
         hm(rec(keys), cnt) += rec(agg)
       }
       eventHandler.registerInterval(1000L) {
+        // count is the main variable which keeps track of the rolling window
+        cnt = (cnt + 1) % c
         hm(cnt) foreach { (k, a) =>
-          yld(new Record(k++a,keys++agg))
+          yld(new Record(k ++ a, keys ++ agg))
         }
-        cnt = (cnt+1)%c
       }
-        //Thread.sleep(5000)
     case HashJoin(left, right) =>
       val keys = resultSchema(left) intersect resultSchema(right)
       val hm = new HashMapBuffer(keys, resultSchema(left))
@@ -296,23 +296,24 @@ Data Structure Implementations
             values(keyPos, off) = schema.map(_ => 0:Rep[Int])
         }
         values(keyPos, off) = (values(keyPos, off), v.map(_.toInt)).zipped map (_ + _)
-        bitmask(keyPos, off) = true
+        bitmask(keyPos, off) = unit(true)
       }
     }
 
     def apply(off: Rep[Int]) = new {
       def foreach(f: (Fields,Fields) => Rep[Unit]) = {
         for (i <- 0 until keyCount) {
+          val prevVal = values(i,off)
           for (off1 <- 0 until bucketSize: Rep[Range]) {
-            if (off != off1 && bitmask(keyPos, off1))
-              values(i, off) = (values(i, off1), v.map(_.toInt)).zipped map (_ + _)
+            if (off != off1 && bitmask(i, off1))
+              values(i, off) = (values(i, off1), values(i, off)).zipped map (_ + _)
           }
-          // skip deleted keys\
+          // skip deleted keys
           f(keys(i),values(i, off).map(_.ToString))
 
           // remove
           values(i, off) = schema.map(_ => 0:Rep[Int])
-          bitmask(keyPos, off) = false
+          bitmask(i, off) = unit(false)
         }
       }
     }
@@ -379,6 +380,7 @@ Data Structure Implementations
       this(len) = x
       len += 1
     }
+    //
     def update(i: Rep[Int], x: Seq[Rep[T]]) = {
       (buf,x).zipped.foreach((b,x) => b(i) = x)
     }
