@@ -87,6 +87,7 @@ trait QueryAST {
   case class Filter(pred: Predicate, parent: Operator) extends Operator
   case class Join(parent1: Operator, parent2: Operator) extends Operator
   case class Group(keys: Schema, agg: Schema, parent: Operator) extends Operator
+  case class GroupR(keys: Schema, agg: Schema, parent: Operator) extends Operator
   case class HashJoin(parent1: Operator, parent2: Operator) extends Operator
 
   // filter predicates
