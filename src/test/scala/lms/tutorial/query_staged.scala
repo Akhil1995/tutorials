@@ -103,6 +103,7 @@ Query Interpretation = Compilation
     case Project(schema, _, _)   => schema
     case Join(left, right)       => resultSchema(left) ++ resultSchema(right)
     case Group(keys, agg, parent)=> keys ++ agg
+    case GroupR(keys, agg, parent)=> keys ++ agg
     case HashJoin(left, right)   => resultSchema(left) ++ resultSchema(right)
     case PrintCSV(parent)        => Schema()
   }
@@ -296,7 +297,7 @@ Data Structure Implementations
             values(keyPos, off) = schema.map(_ => 0:Rep[Int])
         }
         values(keyPos, off) = (values(keyPos, off), v.map(_.toInt)).zipped map (_ + _)
-        bitmask(keyPos, off) = unit(true)
+        bitmask(keyPos, off) = Seq(unit(true))
       }
     }
 
@@ -305,7 +306,7 @@ Data Structure Implementations
         for (i <- 0 until keyCount) {
           val prevVal = values(i,off)
           for (off1 <- 0 until bucketSize: Rep[Range]) {
-            if (off != off1 && bitmask(i, off1))
+            if (off != off1 && bitmask(i, off1).head)
               values(i, off) = (values(i, off1), values(i, off)).zipped map (_ + _)
           }
           // skip deleted keys
@@ -313,7 +314,7 @@ Data Structure Implementations
 
           // remove
           values(i, off) = schema.map(_ => 0:Rep[Int])
-          bitmask(i, off) = unit(false)
+          bitmask(i, off) = Seq(unit(false))
         }
       }
     }

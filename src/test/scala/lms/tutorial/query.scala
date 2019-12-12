@@ -314,7 +314,7 @@ object Run {
       }
       override def snippet(fn: Rep[String]): Rep[Unit] = {
         // run
-
+	run
       }
       override def prepare: Unit = precompile
       override def eval: Unit = eval(filename)
